@@ -439,3 +439,5 @@ jobs:
         with:
           files: neilico-windows-x64.zip
           generate_release_notes: true
+
+# workflow registration marker: 2026-10-07T17:06:05Z
