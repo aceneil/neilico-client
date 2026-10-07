@@ -113,7 +113,10 @@ jobs:
   build-windows:
     name: Windows x64 client
     needs: bridge
-    runs-on: windows-latest
+    # windows-latest now ships Visual Studio 2026 (18.x); Flutter 3.24.5 only maps VS 2019/2022
+    # to a CMake generator, so on VS2026 it picks "Visual Studio 16 2019" and cmake fails.
+    # Pin the runner to windows-2022 (VS 2022) exactly as upstream flutter-build.yml does.
+    runs-on: windows-2022
     timeout-minutes: 240
     env:
       # workflow_dispatch 时可以关掉 hwcodec 走最小构建；push 事件默认完整构建

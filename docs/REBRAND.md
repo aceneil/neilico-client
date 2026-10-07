@@ -342,7 +342,7 @@ CI 从仓库变量 `vars.NEILICO_ID_SERVER` / 密钥 `secrets.NEILICO_PUB_KEY` �
 | job | runner | 说明 |
 | :-- | :-- | :-- |
 | `bridge` | ubuntu-22.04 | flutter_rust_bridge 1.80.1 生成桥接代码，产物给三平台共用 |
-| `build-windows` ★ | windows-latest | vcpkg(x64-windows-static) + Rust 1.75 + Flutter 3.24.5 + 自定义引擎；产出 `neilico-windows-x64.zip`（可运行目录）并 upload-artifact |
+| `build-windows` ★ | windows-2022 | vcpkg(x64-windows-static) + Rust 1.75 + Flutter 3.24.5 + 自定义引擎；产出 `neilico-windows-x64.zip`（可运行目录）并 upload-artifact |
 | `build-linux` | ubuntu-latest | `continue-on-error: true` |
 | `build-macos` | macos-latest | `continue-on-error: true` |
 | `release` | ubuntu-latest | 仅 `v*` tag 触发，挂 Release |
