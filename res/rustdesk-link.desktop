@@ -1,11 +1,11 @@
 [Desktop Entry]
-Name=RustDesk
+Name=NEILICO
 NoDisplay=true
-MimeType=x-scheme-handler/rustdesk;
-TryExec=rustdesk
-Exec=rustdesk %u
-Icon=rustdesk
+MimeType=x-scheme-handler/neilico;
+TryExec=neilico
+Exec=neilico %u
+Icon=neilico
 Terminal=false
 Type=Application
 StartupNotify=false
-StartupWMClass=rustdesk
+StartupWMClass=neilico

@@ -2568,6 +2568,17 @@ class _AboutState extends State<_About> {
                     translate('Website'),
                     style: linkStyle,
                   ).marginSymmetric(vertical: 4.0)),
+              // NEILICO: AGPL-3.0 section 13 -- this build is a modified version, so it must
+              // offer the Corresponding Source to anyone who interacts with it over a network.
+              InkWell(
+                  onTap: () {
+                    launchUrlString(
+                        'https://github.com/aceneil/neilico');
+                  },
+                  child: Text(
+                    'Source code (NEILICO, AGPL-3.0)',
+                    style: linkStyle,
+                  ).marginSymmetric(vertical: 4.0)),
               Container(
                 decoration: const BoxDecoration(color: Color(0xFF2c8cff)),
                 padding:
@@ -2582,6 +2593,13 @@ class _AboutState extends State<_About> {
                           Text(
                             'Copyright © ${DateTime.now().toString().substring(0, 4)} Purslane Tech Pte. Ltd.\n$license',
                             style: const TextStyle(color: Colors.white),
+                          ),
+                          // NEILICO: keep the upstream copyright above untouched; add our own
+                          // modification notice and the Corresponding Source URL (AGPL-3.0 §5/§13).
+                          Text(
+                            'NEILICO is a modified fork of RustDesk, licensed under AGPL-3.0.\n'
+                            'Source: https://github.com/aceneil/neilico',
+                            style: const TextStyle(color: Colors.white70, fontSize: 12),
                           ),
                           Text(
                             translate('Slogan_tip'),

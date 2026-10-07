@@ -1,0 +1,52 @@
+NOTICE
+======
+
+This product is a modified version of RustDesk.
+
+  Upstream:  https://github.com/rustdesk/rustdesk
+  Upstream tag used:   1.5.0
+  Upstream commit:     fada664df7a294d1d1a9ca3e7cd3637069122f17
+  Upstream submodule (libs/hbb_common): 229b904508364c8997aad0fb5af57effac859f60
+  Upstream license:    GNU Affero General Public License v3.0 (AGPL-3.0)
+                       see the file LICENCE, kept verbatim from upstream.
+
+Copyright of the original work remains with its authors, including
+Purslane Tech Pte. Ltd. and the RustDesk contributors. Those copyright
+notices are retained unchanged.
+
+This modified version ("NEILICO") is distributed by NEILICO.
+
+  NEILICO Corresponding Source: https://github.com/aceneil/neilico
+
+Modifications made to the upstream source
+-----------------------------------------
+The following changes are carried on top of upstream commit fada664
+(AGPL-3.0 §5 requires this notice; §13 requires that users who interact
+with this program over a network be offered the Corresponding Source,
+which the link above provides):
+
+1. Product identity renamed from "RustDesk" to "NEILICO"
+   (application name, GTK/Android/macOS/Windows bundle identifiers,
+   window titles, desktop entries, systemd unit, package descriptions).
+
+2. Default rendezvous (ID) and relay server, and the default server
+   public key, changed from the official RustDesk servers to our own
+   self-hosted hbbs/hbbr deployment. See libs/hbb_common/src/config.rs
+   (NEILICO_ID_SERVER / RENDEZVOUS_SERVERS / RS_PUB_KEY). These are
+   overridable at build time via the NEILICO_ID_SERVER and
+   NEILICO_PUB_KEY environment variables.
+
+3. Application icons replaced with NEILICO artwork.
+
+4. The in-client "About" page adds a link to the NEILICO Corresponding
+   Source and a modification notice; the upstream copyright line is
+   retained.
+
+No upstream copyright, license text, or attribution has been removed.
+
+License
+-------
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or (at
+your option) any later version. See the file LICENCE for the full text.
