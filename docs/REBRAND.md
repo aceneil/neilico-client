@@ -16,7 +16,7 @@
 | **commit** | **`fada664df7a294d1d1a9ca3e7cd3637069122f17`** |
 | 子模块 `libs/hbb_common` | https://github.com/rustdesk/hbb_common @ `229b904508364c8997aad0fb5af57effac859f60` |
 | 许可证 | AGPL-3.0（仓库根 `LICENCE`，**原样保留**） |
-| 本地路径 | `/home/neil/Documents/Projects/rustdesk-fork` |
+| 本地路径 | `$HOME/Documents/Projects/rustdesk-fork` |
 | 仓库体积 | ~28 MB（含 `.git` 7.4 MB；`--depth 1` 浅克隆 + 子模块） |
 
 ```bash
@@ -39,9 +39,9 @@ git submodule update --init libs/hbb_common   # 必须！服务器/公钥/应用
 | 行号 | 常量 | 上游值 | 我们的值 |
 | :-- | :-- | :-- | :-- |
 | **57** | `ORG`（`cfg(macos)`） | `"com.carriez"` | `"local.neilico"` |
-| **121** | `NEILICO_ID_SERVER`（**新增**） | — | `match option_env!("NEILICO_ID_SERVER") { Some(v)=>v, None=>"192.168.123.90" }` |
+| **121** | `NEILICO_ID_SERVER`（**新增**） | — | `match option_env!("NEILICO_ID_SERVER") { Some(v)=>v, None=>"192.168.1.10" }` |
 | **125** | `RENDEZVOUS_SERVERS`（默认 ID 服务器） | `["rs-ny.rustdesk.com"]` | `[NEILICO_ID_SERVER]` |
-| **126** | `RS_PUB_KEY`（默认公钥） | `"OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw="` | `match option_env!("NEILICO_PUB_KEY") { Some(v)=>v, None=>"eTJt8siibSbWPyj9p2sNQwbF5i6gQXICbkGPterq7oY=" }` |
+| **126** | `RS_PUB_KEY`（默认公钥） | `"OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw="` | `match option_env!("NEILICO_PUB_KEY") { Some(v)=>v, None=>"YOUR_HBBS_PUBLIC_KEY" }` |
 
 （中继端口常量同文件：`RENDEZVOUS_PORT=21116`(:131)、`RELAY_PORT=21117`(:132)、`WS_*=21118/21119`(:133-134)，端口与上游一致，未改。）
 
@@ -60,11 +60,11 @@ git submodule update --init libs/hbb_common   # 必须！服务器/公钥/应用
 
 ```bash
 NEILICO_ID_SERVER=rd.example.com \
-NEILICO_PUB_KEY=eTJt8siibSbWPyj9p2sNQwbF5i6gQXICbkGPterq7oY= \
+NEILICO_PUB_KEY=YOUR_HBBS_PUBLIC_KEY \
   cargo build --locked --lib --features flutter --release
 ```
 
-> 本轮为**验证真能连上我们自己的 hbbs**，默认值取本机 hbbs 的局域网地址 `192.168.123.90`
+> 本轮为**验证真能连上我们自己的 hbbs**，默认值取本机 hbbs 的局域网地址 `192.168.1.10`
 > （可用 `NEILICO_ID_SERVER` 覆盖）。发行前请换公网域名后重编。
 
 ### 2.2 应用名 / 包标识（appid）/ 版本号 —— 分平台
@@ -177,7 +177,7 @@ NEILICO_PUB_KEY=eTJt8siibSbWPyj9p2sNQwbF5i6gQXICbkGPterq7oY= \
 | 行号 | 改动 |
 | :-- | :-- |
 | `2535` | 标题 `translate('About RustDesk')` → 经 §2.2 语言替换后界面显示 **About NEILICO** |
-| `2579` | **新增**链接行：`Source code (NEILICO, AGPL-3.0)` → `https://github.com/aceneil/neilico` |
+| `2579` | **新增**链接行：`Source code (NEILICO, AGPL-3.0)` → `https://github.com/aceneil/neilico-client` |
 | `2600` | **新增**页脚声明：`NEILICO is a modified fork of RustDesk, licensed under AGPL-3.0.` + 源码地址 |
 | `2583` | 上游版权行 `Copyright © … Purslane Tech Pte. Ltd.` **原样保留**（未删改） |
 
@@ -278,7 +278,7 @@ libxcb-shape0-dev libxcb-xfixes0-dev libxfixes-dev libclang-dev nasm`
 | 不删改上游版权 | `LICENCE` 与关于页 Purslane 版权行均保留 |
 
 依据 AGPL-3.0 §5（显著声明修改、保留版权）与 §13（网络交互须提供 Corresponding Source）。
-对应源码仓库：**https://github.com/aceneil/neilico**（`rustdesk-fork` 将来并入该组织下独立仓库后更新）。
+对应源码仓库：**https://github.com/aceneil/neilico-client**（`rustdesk-fork` 将来并入该组织下独立仓库后更新）。
 
 ---
 
@@ -302,7 +302,7 @@ libxcb-shape0-dev libxcb-xfixes0-dev libxfixes-dev libclang-dev nasm`
 | 3 | 界面多处 `rustdesk.com` 链接（隐私/文档/下载/定价，移动端设置页显示 "rustdesk.com"） | `flutter/lib/common.dart:3741`、`desktop_setting_page.dart:2557,2565`、`connection_page.dart:44`、`desktop_home_page.dart:438,531,542,548`、`mobile/pages/settings_page.dart:39,1033,1066,1179,1184` 等 | 指向我们官网/文档，或删除；关于页 Website 现仍指上游（作为署名保留） |
 | 4 | 应用内 logo `flutter/assets/icon.svg` 仍是上游图形（`loadIcon` 已优先生效新 `assets/icon.png`，SVG 仅是回退） | `flutter/assets/icon.svg` | 换 NEILICO 矢量图 |
 | 5 | `libs/hbb_common` 仍是**上游子模块**，我们的改动在其工作树内、未 fork | `.gitmodules` | 换成我们的 fork 或改为 vendored 目录，否则 `git submodule update` 会覆盖改动 |
-| 6 | 默认服务器默认值是内网 IP `192.168.123.90` | `config.rs:121` | 发行前用 `NEILICO_ID_SERVER` 换公网域名重编 |
+| 6 | 默认服务器默认值是内网 IP `192.168.1.10` | `config.rs:121` | 发行前用 `NEILICO_ID_SERVER` 换公网域名重编 |
 | 7 | `pubspec.lock` 被本机 Flutter 3.47 的 `pub get` 重写（120 行） | `flutter/pubspec.lock` | 与 CI 锁定的 Flutter 版本对齐后再定稿 |
 | 8 | 提权服务 / 系统级组件（uinput、Wayland 免打扰、`res/DEBIAN`）的命名与签名 | `src/ipc`、`res/DEBIAN` | 视发行形态跟进 |
 | 9 | 未做 Windows/macOS/Android 真编与签名 | — | 见 §4 |
@@ -311,3 +311,51 @@ libxcb-shape0-dev libxcb-xfixes0-dev libxfixes-dev libclang-dev nasm`
 ---
 
 _本文件对上游 tag 1.5.0（commit `fada664…`）有效。_
+
+---
+
+## 8. 本轮（2026-10）：脱敏 + 公开仓库 + Windows CI 出包
+
+### 8.1 脱敏（0 命中铁闸）
+
+| 位置 | 改动 |
+| :-- | :-- |
+| `libs/hbb_common/src/config.rs` | `NEILICO_ID_SERVER` 默认值（原为内网 IP）→ `your-server.example.com`；`RS_PUB_KEY` 默认值（原为真实 hbbs 公钥）→ 占位符 `YOUR_HBBS_PUBLIC_KEY` |
+| `docs/REBRAND.md` | 内网 IP / 本机绝对路径 / 真实公钥 → 占位符（`192.168.1.10`、`$HOME/...`、`YOUR_HBBS_PUBLIC_KEY`） |
+
+验收：对「原内网网段」与「本机家目录绝对路径」两个模式，在**父仓跟踪文件**与
+**`libs/hbb_common` 工作树**中均为 **0 命中**。为避免把模式串本身写进仓库而再次命中，
+具体正则见本轮任务单，此处不复写。
+
+真实服务器地址/公钥只在**构建期**注入（`NEILICO_ID_SERVER` / `NEILICO_PUB_KEY`），
+CI 从仓库变量 `vars.NEILICO_ID_SERVER` / 密钥 `secrets.NEILICO_PUB_KEY` 读取；
+未配置时保留源码占位符，仓库内**不含**任何真实内网地址与密钥。
+
+### 8.2 子模块处置（对应 §7 #5）
+
+`libs/hbb_common` 由 **git 子模块** 改为 **vendored 目录**（删除 `.gitmodules`，
+工作树文件直接入库）。理由：fork 的改动在其本地提交里，上游 `rustdesk/hbb_common`
+没有这些提交，CI `actions/checkout`（子模块）会拉取失败；vendored 后仓库自包含。
+
+### 8.3 CI（`.github/workflows/neilico-build.yml`）
+
+| job | runner | 说明 |
+| :-- | :-- | :-- |
+| `bridge` | ubuntu-22.04 | flutter_rust_bridge 1.80.1 生成桥接代码，产物给三平台共用 |
+| `build-windows` ★ | windows-latest | vcpkg(x64-windows-static) + Rust 1.75 + Flutter 3.24.5 + 自定义引擎；产出 `neilico-windows-x64.zip`（可运行目录）并 upload-artifact |
+| `build-linux` | ubuntu-latest | `continue-on-error: true` |
+| `build-macos` | macos-latest | `continue-on-error: true` |
+| `release` | ubuntu-latest | 仅 `v*` tag 触发，挂 Release |
+
+* 触发：`push`（`neilico`/`main` 分支、`v*` tag）+ `workflow_dispatch`。
+* 与上游一致：Flutter 3.24.5（桥接 3.22.3）、Rust 1.75、LLVM 15.0.6、vcpkg `9e593bb`；
+  Windows 用上游同款自定义引擎 `rustdesk/engine` 与 Flutter dropdown 补丁。
+* 与上游不同：Windows **不走 `build.py`**，直接 `cargo build --features flutter,hwcodec,vram`
+  + `flutter build windows`，再打 zip（避开 `build.py` 里对 virtual-display dylib 的强拷贝与
+  便携打包器）。
+* `workflow_dispatch` 可传 `hwcodec=false` 走最小构建（不建 ffmpeg，仅 vcpkg opus）。
+
+### 8.4 公开仓库
+
+`https://github.com/aceneil/neilico-client`（公开）。保留 `LICENCE`（AGPL-3.0 原文）
++ `NOTICE`（修改声明、上游 tag/commit、源码地址），AGPL §5/§13 合规。

@@ -1,0 +1,441 @@
+# NEILICO client — 三平台构建（Windows 优先）
+#
+# 依据上游 .github/workflows/bridge.yml + flutter-build.yml 改写：
+#   * 桥接代码（flutter_rust_bridge 1.80.1）只在 ubuntu 上生成一次，三个平台共用；
+#   * Windows 先保证出包（可运行目录 → zip → artifact），失败即原样暴露日志；
+#   * Linux / macOS 允许先失败（continue-on-error），待后续单独攻坚；
+#   * 服务器地址/公钥：仓库变量 vars.NEILICO_ID_SERVER、密钥 secrets.NEILICO_PUB_KEY
+#     注入；未设置时用源码内的占位符（your-server.example.com），仓库内不含真实内网 IP。
+#
+# 需要与上游保持一致的锁定版本：
+#   Flutter 3.24.5（构建）/ 3.22.3（生成桥接）、Rust 1.75、LLVM 15.0.6、vcpkg 9e593bb。
+
+name: NEILICO client build
+
+on:
+  push:
+    branches: [ neilico, main ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+    inputs:
+      hwcodec:
+        description: "启用硬件编解码（--hwcodec --vram，需完整 vcpkg，较慢）"
+        type: boolean
+        default: true
+      build-linux:
+        description: "同时尝试 Linux 构建"
+        type: boolean
+        default: false
+      build-macos:
+        description: "同时尝试 macOS 构建"
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NEILICO_APP_NAME: "NEILICO"
+  RUST_VERSION: "1.75"
+  FLUTTER_VERSION: "3.24.5"
+  BRIDGE_FLUTTER_VERSION: "3.22.3"
+  LLVM_VERSION: "15.0.6"
+  CARGO_EXPAND_VERSION: "1.0.95"
+  FLUTTER_RUST_BRIDGE_VERSION: "1.80.1"
+  VCPKG_COMMIT_ID: "9e593bb18ea69cc5095e012465dcd675a822ed0d"
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+
+jobs:
+  # ------------------------------------------------------------------
+  # 1) 桥接代码：与上游 bridge.yml 一致（ubuntu-22.04 + Flutter 3.22.3）
+  # ------------------------------------------------------------------
+  bridge:
+    name: Generate flutter-rust bridge
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Install prerequisites
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y \
+            clang cmake curl gcc git g++ libclang-dev libgtk-3-dev \
+            llvm-dev nasm ninja-build pkg-config wget
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          components: rustfmt
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.BRIDGE_FLUTTER_VERSION }}
+          cache: true
+
+      - name: Install flutter-rust-bridge deps
+        shell: bash
+        run: |
+          cargo install cargo-expand --version ${{ env.CARGO_EXPAND_VERSION }} --locked
+          cargo install flutter_rust_bridge_codegen --version ${{ env.FLUTTER_RUST_BRIDGE_VERSION }} --features "uuid" --locked
+          # Flutter 3.22.3 needs the older extended_text for resolution (same as upstream bridge job)
+          sed -i -e 's/extended_text: 14.0.0/extended_text: 13.0.0/g' flutter/pubspec.yaml
+          pushd flutter && flutter pub get && popd
+
+      - name: Run flutter_rust_bridge_codegen
+        run: |
+          ~/.cargo/bin/flutter_rust_bridge_codegen \
+            --rust-input ./src/flutter_ffi.rs \
+            --dart-output ./flutter/lib/generated_bridge.dart \
+            --c-output ./flutter/macos/Runner/bridge_generated.h
+          cp ./flutter/macos/Runner/bridge_generated.h ./flutter/ios/Runner/bridge_generated.h
+
+      - name: Upload bridge artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bridge-artifact
+          if-no-files-found: error
+          path: |
+            ./src/bridge_generated.rs
+            ./src/bridge_generated.io.rs
+            ./flutter/lib/generated_bridge.dart
+            ./flutter/lib/generated_bridge.freezed.dart
+            ./flutter/macos/Runner/bridge_generated.h
+            ./flutter/ios/Runner/bridge_generated.h
+
+  # ------------------------------------------------------------------
+  # 2) Windows（本轮的验收目标）
+  # ------------------------------------------------------------------
+  build-windows:
+    name: Windows x64 client
+    needs: bridge
+    runs-on: windows-latest
+    timeout-minutes: 240
+    env:
+      # workflow_dispatch 时可以关掉 hwcodec 走最小构建；push 事件默认完整构建
+      FEATURES: ${{ (github.event_name != 'workflow_dispatch' || inputs.hwcodec) && 'flutter,hwcodec,vram' || 'flutter' }}
+    steps:
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Restore bridge files
+        uses: actions/download-artifact@v4
+        with:
+          name: bridge-artifact
+          path: ./
+
+      - name: Install LLVM and Clang
+        uses: KyleMayes/install-llvm-action@v2
+        with:
+          version: ${{ env.LLVM_VERSION }}
+
+      - name: Install Flutter
+        id: flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          architecture: x64
+
+      - name: Replace engine with rustdesk custom flutter engine
+        shell: pwsh
+        run: |
+          flutter doctor -v
+          flutter precache --windows
+          $flutterRoot = "${{ steps.flutter.outputs['CACHE-PATH'] }}"
+          $engineDir = "$flutterRoot\bin\cache\artifacts\engine\windows-x64-release"
+          Invoke-WebRequest -Uri https://github.com/rustdesk/engine/releases/download/main/windows-x64-release.zip -OutFile windows-x64-release.zip
+          Expand-Archive -Path windows-x64-release.zip -DestinationPath engine-tmp
+          Copy-Item -Recurse -Force engine-tmp\* $engineDir
+          Write-Host "engine dir refreshed: $engineDir"
+
+      - name: Patch flutter (dropdown filter)
+        shell: bash
+        run: |
+          FLUTTER_ROOT=$(dirname $(dirname $(which flutter)))
+          cp .github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff "$FLUTTER_ROOT/"
+          cd "$FLUTTER_ROOT"
+          git apply flutter_3.24.4_dropdown_menu_enableFilter.diff
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: x86_64-pc-windows-msvc
+          components: rustfmt
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: windows-x64
+
+      - name: Setup vcpkg with GitHub Actions binary cache
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgDirectory: C:\vcpkg
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
+          doNotCache: false
+
+      - name: Install vcpkg dependencies
+        shell: bash
+        env:
+          VCPKG_DEFAULT_HOST_TRIPLET: x64-windows-static
+        run: |
+          if ! $VCPKG_ROOT/vcpkg install \
+                 --triplet x64-windows-static \
+                 --x-install-root="$VCPKG_ROOT/installed"; then
+            find "${VCPKG_ROOT}/" -name "*.log" | while read -r f; do
+              echo "===== $f ====="; cat "$f"; echo
+            done
+            exit 1
+          fi
+
+      - name: Inject NEILICO server settings (only when configured)
+        shell: bash
+        run: |
+          # 未配置时保持源码里的占位符（your-server.example.com / YOUR_HBBS_PUBLIC_KEY）；
+          # 不把真实地址/公钥提交进仓库，仅在此处按仓库变量/密钥注入。
+          if [ -n "${{ vars.NEILICO_ID_SERVER }}" ]; then
+            echo "NEILICO_ID_SERVER=${{ vars.NEILICO_ID_SERVER }}" >> "$GITHUB_ENV"
+          else
+            echo "NEILICO_ID_SERVER not set -> using source placeholder"
+          fi
+          if [ -n "${{ secrets.NEILICO_PUB_KEY }}" ]; then
+            echo "NEILICO_PUB_KEY=${{ secrets.NEILICO_PUB_KEY }}" >> "$GITHUB_ENV"
+          else
+            echo "NEILICO_PUB_KEY not set -> using source placeholder"
+          fi
+
+      - name: Build rust core
+        shell: bash
+        run: |
+          echo "features: $FEATURES"
+          cargo build --locked --features "$FEATURES" --release
+
+      - name: Build rustdesk virtual-display dylib (best effort)
+        shell: bash
+        continue-on-error: true
+        run: cargo build --release -p dylib_virtual_display
+
+      - name: Build Flutter Windows app
+        shell: bash
+        working-directory: flutter
+        run: flutter build windows --release
+
+      - name: Assemble runnable bundle + zip
+        shell: bash
+        run: |
+          set -e
+          SRC="flutter/build/windows/x64/runner/Release"
+          if [ ! -f "$SRC/neilico.exe" ]; then
+            echo "!! neilico.exe missing under $SRC"; ls -la "$SRC" || true; exit 1
+          fi
+          # 随包附带虚拟显示 dylib（若已构建）
+          if [ -f target/release/dylib_virtual_display.dll ]; then
+            cp target/release/dylib_virtual_display.dll "$SRC/"
+          fi
+          rm -rf dist && mkdir -p dist
+          cp -r "$SRC"/. dist/
+          {
+            echo "NEILICO Remote Desktop (Windows x64)"
+            echo "commit:    $GITHUB_SHA"
+            echo "run:       $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo "built:     $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "features:  $FEATURES"
+            echo "server:    ${NEILICO_ID_SERVER:-<source placeholder>}"
+            echo "source:    https://github.com/$GITHUB_REPOSITORY"
+          } > dist/BUILD-INFO.txt
+          ls -la dist | head -40
+          cd dist && 7z a -tzip ../neilico-windows-x64.zip . >/dev/null
+          cd ..
+          ls -la neilico-windows-x64.zip
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: neilico-windows-x64
+          if-no-files-found: error
+          retention-days: 30
+          path: neilico-windows-x64.zip
+
+  # ------------------------------------------------------------------
+  # 3) Linux（先允许失败）
+  # ------------------------------------------------------------------
+  build-linux:
+    name: Linux x86_64 client
+    needs: bridge
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 240
+    env:
+      NEILICO_FEATURES: flutter,hwcodec
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore bridge files
+        uses: actions/download-artifact@v4
+        with:
+          name: bridge-artifact
+          path: ./
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y \
+            clang cmake ninja-build pkg-config nasm libclang-dev \
+            libgtk-3-dev libssl-dev libgstreamer1.0-dev \
+            libgstreamer-plugins-base1.0-dev libpulse-dev libva-dev \
+            libayatana-appindicator3-dev libasound2-dev \
+            libxcb-randr0-dev libxcb-shape0-dev libxcb-xfixes0-dev \
+            libxfixes-dev libxdo-dev
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          components: rustfmt
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: linux-x64
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgDirectory: /opt/vcpkg
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
+          doNotCache: false
+
+      - name: Install vcpkg dependencies
+        shell: bash
+        run: |
+          if ! $VCPKG_ROOT/vcpkg install \
+                 --triplet x64-linux \
+                 --x-install-root="$VCPKG_ROOT/installed"; then
+            find "${VCPKG_ROOT}/" -name "*.log" | while read -r f; do echo "===== $f ====="; cat "$f"; done
+            exit 1
+          fi
+
+      - name: Build rust core
+        run: cargo build --locked --features "$NEILICO_FEATURES" --release
+
+      - name: Refactor generated bridge for ffigen (build.py workaround)
+        run: |
+          sed -i "s/ffi.NativeFunction<ffi.Bool Function(DartPort/ffi.NativeFunction<ffi.Uint8 Function(DartPort/g" flutter/lib/generated_bridge.dart
+
+      - name: Build Flutter Linux app
+        working-directory: flutter
+        run: flutter build linux --release
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: neilico-linux-x64
+          if-no-files-found: warn
+          retention-days: 14
+          path: flutter/build/linux/x64/release/bundle/
+
+  # ------------------------------------------------------------------
+  # 4) macOS（先允许失败）
+  # ------------------------------------------------------------------
+  build-macos:
+    name: macOS client
+    needs: bridge
+    runs-on: macos-latest
+    continue-on-error: true
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore bridge files
+        uses: actions/download-artifact@v4
+        with:
+          name: bridge-artifact
+          path: ./
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: "1.81"
+          components: rustfmt
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: macos
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
+          doNotCache: false
+
+      - name: Install vcpkg dependencies
+        shell: bash
+        run: |
+          if ! $VCPKG_ROOT/vcpkg install \
+                 --triplet arm64-osx \
+                 --x-install-root="$VCPKG_ROOT/installed"; then
+            find "${VCPKG_ROOT}/" -name "*.log" | while read -r f; do echo "===== $f ====="; cat "$f"; done
+            exit 1
+          fi
+
+      - name: Build rust core
+        run: cargo build --locked --features flutter --release
+
+      - name: Build Flutter macOS app
+        working-directory: flutter
+        run: flutter build macos --release
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: neilico-macos
+          if-no-files-found: warn
+          retention-days: 14
+          path: flutter/build/macos/Build/Products/Release/
+
+  # ------------------------------------------------------------------
+  # 5) tag 时发布 Release
+  # ------------------------------------------------------------------
+  release:
+    name: Publish release assets
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [ build-windows ]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: neilico-windows-x64
+          path: ./
+      - name: Create/refresh release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: neilico-windows-x64.zip
+          generate_release_notes: true

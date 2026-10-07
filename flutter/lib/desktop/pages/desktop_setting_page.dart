@@ -2573,7 +2573,7 @@ class _AboutState extends State<_About> {
               InkWell(
                   onTap: () {
                     launchUrlString(
-                        'https://github.com/aceneil/neilico');
+                        'https://github.com/aceneil/neilico-client');
                   },
                   child: Text(
                     'Source code (NEILICO, AGPL-3.0)',
@@ -2598,7 +2598,7 @@ class _AboutState extends State<_About> {
                           // modification notice and the Corresponding Source URL (AGPL-3.0 §5/§13).
                           Text(
                             'NEILICO is a modified fork of RustDesk, licensed under AGPL-3.0.\n'
-                            'Source: https://github.com/aceneil/neilico',
+                            'Source: https://github.com/aceneil/neilico-client',
                             style: const TextStyle(color: Colors.white70, fontSize: 12),
                           ),
                           Text(
