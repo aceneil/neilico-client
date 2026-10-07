@@ -359,3 +359,24 @@ CI 从仓库变量 `vars.NEILICO_ID_SERVER` / 密钥 `secrets.NEILICO_PUB_KEY` �
 
 `https://github.com/aceneil/neilico-client`（公开）。保留 `LICENCE`（AGPL-3.0 原文）
 + `NOTICE`（修改声明、上游 tag/commit、源码地址），AGPL §5/§13 合规。
+
+### 8.5 首次成功构建（实测）
+
+* 运行：https://github.com/aceneil/neilico-client/actions/runs/37667539911 —— `completed / success`
+* 产物（可下载 artifact）：**`neilico-windows-x64`**（约 32.8 MB）。解包后含
+  `neilico.exe`、`librustdesk.dll`（约 40 MB）、`flutter_windows.dll`、`dylib_virtual_display.dll`、
+  `data/`（`app.so` + `flutter_assets`）、`BUILD-INFO.txt`（记录 commit/运行链接/构建时间/features）。
+* 命令：`cargo build --locked --features "flutter,hwcodec,vram" --release` → `flutter build windows --release`
+  → `7z a -tzip neilico-windows-x64.zip`。
+* 关键坑：**不能跑在 `windows-latest`**。该镜像现在是 Visual Studio 2026（18.x），Flutter 3.24.5
+  只认 VS 2019/2022，会退化成 `Generator Visual Studio 16 2019` 并报
+  `could not find any instance of Visual Studio`（见运行 …/runs/37658242995 的
+  `Build Flutter Windows app` 步骤）。**必须 `windows-2022`**，与上游 `flutter-build.yml` 一致。
+
+### 8.6 遗留
+
+* `aceneil/neilico-client-broken-20261008`：首次推送（浅克隆 thin-pack）触发 GitHub 侧 500，
+  该仓库进入只读坏状态；已改名让出 `neilico-client`。无 `delete_repo` 权限，需在网页端删除。
+* `aceneil/neilico-desktop`：排查过程中的空仓库，可删除。
+* Linux/macOS job 仍 `continue-on-error`：macOS 卡在 `Install vcpkg dependencies`（arm64-osx），
+  Linux 未实跑；Windows 已可出包。
