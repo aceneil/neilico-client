@@ -151,14 +151,17 @@ jobs:
       - name: Replace engine with rustdesk custom flutter engine
         shell: pwsh
         run: |
-          flutter doctor -v
           flutter precache --windows
-          $flutterRoot = "${{ steps.flutter.outputs['CACHE-PATH'] }}"
-          $engineDir = "$flutterRoot\bin\cache\artifacts\engine\windows-x64-release"
+          # Derive the SDK root from the flutter executable (CACHE-PATH points one level up).
+          $sdk = Split-Path (Split-Path (Get-Command flutter).Source)
+          $engineDir = Join-Path $sdk "bin\cache\artifacts\engine\windows-x64-release"
+          New-Item -ItemType Directory -Force -Path $engineDir | Out-Null
+          Write-Host "SDK: $sdk"
+          Write-Host "engine dir: $engineDir"
           Invoke-WebRequest -Uri https://github.com/rustdesk/engine/releases/download/main/windows-x64-release.zip -OutFile windows-x64-release.zip
-          Expand-Archive -Path windows-x64-release.zip -DestinationPath engine-tmp
+          Expand-Archive -Path windows-x64-release.zip -DestinationPath engine-tmp -Force
           Copy-Item -Recurse -Force engine-tmp\* $engineDir
-          Write-Host "engine dir refreshed: $engineDir"
+          Get-ChildItem $engineDir -Name | Select-Object -First 10
 
       - name: Patch flutter (dropdown filter)
         shell: bash
@@ -274,6 +277,7 @@ jobs:
   build-linux:
     name: Linux x86_64 client
     needs: bridge
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.build-linux }}
     runs-on: ubuntu-latest
     continue-on-error: true
     timeout-minutes: 240
@@ -358,6 +362,7 @@ jobs:
   build-macos:
     name: macOS client
     needs: bridge
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.build-macos }}
     runs-on: macos-latest
     continue-on-error: true
     timeout-minutes: 240
