@@ -152,11 +152,14 @@ jobs:
           cache-dependency-path: external/neilico/agent/go.sum
 
       - name: Build embedded NEILICO Mesh agent
-        shell: bash
+        shell: pwsh
         working-directory: external/neilico/agent
         run: |
-          CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" \
-            -o ../../../target/release/neilico-agent.exe ./cmd/agent
+          $out = Join-Path '${{ github.workspace }}' 'target\\release\\neilico-agent.exe'
+          New-Item -ItemType Directory -Force (Split-Path $out) | Out-Null
+          $env:CGO_ENABLED = '0'
+          go build -trimpath -ldflags='-s -w' -o $out ./cmd/agent
+          Get-Item $out
 
       - name: Install LLVM and Clang
         uses: KyleMayes/install-llvm-action@v2
