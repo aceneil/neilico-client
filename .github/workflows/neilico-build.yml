@@ -156,7 +156,7 @@ jobs:
         working-directory: external/neilico/agent
         run: |
           CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" \
-            -o "$GITHUB_WORKSPACE/target/release/neilico-agent.exe" ./cmd/agent
+            -o ../../../target/release/neilico-agent.exe ./cmd/agent
 
       - name: Install LLVM and Clang
         uses: KyleMayes/install-llvm-action@v2
