@@ -1,182 +1,116 @@
-<p align="center">
-  <img src="res/logo-header.svg" alt="RustDesk - Your remote desktop"><br>
-  <a href="#raw-steps-to-build">Build</a> •
-  <a href="#how-to-build-with-docker">Docker</a> •
-  <a href="#file-structure">Structure</a> •
-  <a href="#screenshots">Screenshots</a><br>
-  [<a href="docs/README-UA.md">Українська</a>] | [<a href="docs/README-CS.md">česky</a>] | [<a href="docs/README-ZH.md">中文</a>] | [<a href="docs/README-HU.md">Magyar</a>] | [<a href="docs/README-ES.md">Español</a>] | [<a href="docs/README-FA.md">فارسی</a>] | [<a href="docs/README-FR.md">Français</a>] | [<a href="docs/README-DE.md">Deutsch</a>] | [<a href="docs/README-PL.md">Polski</a>] | [<a href="docs/README-ID.md">Indonesian</a>] | [<a href="docs/README-FI.md">Suomi</a>] | [<a href="docs/README-ML.md">മലയാളം</a>] | [<a href="docs/README-JP.md">日本語</a>] | [<a href="docs/README-NL.md">Nederlands</a>] | [<a href="docs/README-IT.md">Italiano</a>] | [<a href="docs/README-RU.md">Русский</a>] | [<a href="docs/README-PTBR.md">Português (Brasil)</a>] | [<a href="docs/README-EO.md">Esperanto</a>] | [<a href="docs/README-KR.md">한국어</a>] | [<a href="docs/README-AR.md">العربي</a>] | [<a href="docs/README-VN.md">Tiếng Việt</a>] | [<a href="docs/README-DA.md">Dansk</a>] | [<a href="docs/README-GR.md">Ελληνικά</a>] | [<a href="docs/README-TR.md">Türkçe</a>] | [<a href="docs/README-NO.md">Norsk</a>] | [<a href="docs/README-RO.md">Română</a>]<br>
-  <b>We need your help to translate this README, <a href="https://github.com/rustdesk/rustdesk/tree/master/src/lang">RustDesk UI</a> and <a href="https://github.com/rustdesk/doc.rustdesk.com">RustDesk Doc</a> to your native language</b>
-</p>
+# NEILICO Client
 
-> [!Caution]
-> **Misuse Disclaimer:** <br>
-> The developers of RustDesk do not condone or support any unethical or illegal use of this software. Misuse, such as unauthorized access, control or invasion of privacy, is strictly against our guidelines. The authors are not responsible for any misuse of the application.
+NEILICO 官方客户端是面向 Windows、Linux、macOS 和 Android 的多平台远程桌面客户端，基于 `rustdesk/rustdesk` 1.5.0 修改，整体适用 **AGPL-3.0**。仓库同时包含从主仓库迁入的 Flutter 设备/策略管理端（`app/`）和 `rust-core/` 内核接入骨架。
 
+## 平台状态
 
-Chat with us: [Discord](https://discord.gg/nDceKgxnkV) | [Twitter](https://twitter.com/rustdesk) | [Reddit](https://www.reddit.com/r/rustdesk) | [YouTube](https://www.youtube.com/@rustdesk)
+| 平台 | 状态 | 当前交付 |
+| :-- | :-- | :-- |
+| Windows x64 | ✅ 已出包 | [Release v1.5.0-neilico.1](https://github.com/aceneil/neilico-client/releases/tag/v1.5.0-neilico.1) |
+| Linux x64 | ⏳ 构建中 | `.github/workflows/neilico-build.yml` 手动构建、允许失败，尚无正式 Release |
+| macOS | ⏳ 构建中 | `.github/workflows/neilico-build.yml` 手动构建、允许失败，尚无正式 Release |
+| Android | ⏳ 构建中 | 上游 Android 构建链保留，尚未发布 NEILICO 包 |
 
-[![RustDesk Server Pro](https://img.shields.io/badge/RustDesk%20Server%20Pro-Advanced%20Features-blue)](https://rustdesk.com/pricing.html)
+状态以当前仓库和 Release 为准；“构建中”不等于已发布或已验收。
 
-Yet another remote desktop solution, written in Rust. Works out of the box with no configuration required. You have full control of your data, with no concerns about security. You can use our rendezvous/relay server, [set up your own](https://rustdesk.com/server), or [write your own rendezvous/relay server](https://github.com/rustdesk/rustdesk-server-demo).
+## 怎么下载
 
-![image](https://user-images.githubusercontent.com/71636191/171661982-430285f0-2e12-4b1d-9957-4a58e375304d.png)
+Windows 可从 [v1.5.0-neilico.1 Release](https://github.com/aceneil/neilico-client/releases/tag/v1.5.0-neilico.1) 下载当前资产 `neilico-windows-x64.zip`，也可以从你自己的 NEILICO 控制面下载固定命名的客户端包：
 
-RustDesk welcomes contribution from everyone. See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for help getting started.
-
-[**FAQ**](https://github.com/rustdesk/rustdesk/wiki/FAQ)
-
-[**BINARY DOWNLOAD**](https://github.com/rustdesk/rustdesk/releases)
-
-[**NIGHTLY BUILD**](https://github.com/rustdesk/rustdesk/releases/tag/nightly)
-
-[<img src="https://f-droid.org/badge/get-it-on.png"
-    alt="Get it on F-Droid"
-    height="80">](https://f-droid.org/en/packages/com.carriez.flutter_hbb)
-[<img src="https://flathub.org/api/badge?svg&locale=en"
-    alt="Get it on Flathub"
-    height="80">](https://flathub.org/apps/com.rustdesk.RustDesk)
-
-## Dependencies
-
-Desktop versions use Flutter or Sciter (deprecated) for GUI. This tutorial is for Sciter only, since it is easier and more friendly to start. Check out our [CI](https://github.com/rustdesk/rustdesk/blob/master/.github/workflows/flutter-build.yml) for building the Flutter version.
-
-Please download Sciter dynamic library yourself.
-
-[Windows](https://raw.githubusercontent.com/c-smile/sciter-sdk/master/bin.win/x64/sciter.dll) |
-[Linux](https://raw.githubusercontent.com/c-smile/sciter-sdk/master/bin.lnx/x64/libsciter-gtk.so) |
-[macOS](https://raw.githubusercontent.com/c-smile/sciter-sdk/master/bin.osx/libsciter.dylib)
-
-## Raw Steps to build
-
-- Prepare your Rust development env and C++ build env
-
-- Install [vcpkg](https://github.com/microsoft/vcpkg), and set `VCPKG_ROOT` env variable correctly
-
-  - Windows: vcpkg install libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static
-  - Linux/macOS: vcpkg install libvpx libyuv opus aom
-
-- run `cargo run`
-
-## [Build](https://rustdesk.com/docs/en/dev/build/)
-
-## How to Build on Linux
-
-### Ubuntu 18 (Debian 10)
-
-```sh
-sudo apt install -y zip g++ gcc git curl wget nasm yasm libgtk-3-dev clang libxcb-randr0-dev libxdo-dev \
-        libxfixes-dev libxcb-shape0-dev libxcb-xfixes0-dev libasound2-dev libpulse-dev cmake make \
-        libclang-dev ninja-build libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+```text
+https://<SERVER>/downloads/neilico-client-windows-x64.zip
 ```
 
-### openSUSE Tumbleweed
+控制面下载目录由 `NEILICO_DOWNLOADS_DIR` 指定；文件名必须符合下载白名单。Release 资产当前叫 `neilico-windows-x64.zip`，控制面包名是 `neilico-client-windows-x64.zip`，复制到下载目录时请按后者命名。
 
-```sh
-sudo zypper install gcc-c++ git curl wget nasm yasm gcc gtk3-devel clang libxcb-devel libXfixes-devel cmake alsa-lib-devel gstreamer-devel gstreamer-plugins-base-devel xdotool-devel
+## 怎么构建
+
+工具链固定为 **Flutter 3.24.5**、**Rust 1.75**；Windows CI 位于 [`.github/workflows/neilico-build.yml`](.github/workflows/neilico-build.yml)，并使用 windows-2022、LLVM 15.0.6、vcpkg 和 RustDesk 自定义 Flutter engine。CI 会先生成 `flutter-rust-bridge` 文件，再编译 Rust 核心和 Flutter 应用。
+
+核心构建命令为：
+
+```bash
+cargo build --locked --release --features "flutter,hwcodec,vram"
+cd flutter
+flutter build windows --release
 ```
 
-### Fedora 28 (CentOS 8)
+`hwcodec`/`vram` 需要对应平台的编解码与 vcpkg 依赖。Linux/macOS/Android 的完整前置依赖和产物布局不同，请以各自 workflow 为准；当前 CI 尚未把它们作为发布验收目标。
 
-```sh
-sudo yum -y install gcc-c++ git curl wget nasm yasm gcc gtk3-devel clang libxcb-devel libxdo-devel libXfixes-devel pulseaudio-libs-devel cmake alsa-lib-devel gstreamer1-devel gstreamer1-plugins-base-devel
+## 怎么注入服务器
+
+构建前注入 hbbs 地址和服务端公钥：
+
+```bash
+NEILICO_ID_SERVER=<HOST> \
+NEILICO_PUB_KEY=<BASE64_PUBLIC_KEY> \
+cargo build --locked --release --features "flutter,hwcodec,vram"
 ```
 
-### Arch (Manjaro)
+CI 从仓库变量 `vars.NEILICO_ID_SERVER` 和密钥 `secrets.NEILICO_PUB_KEY` 注入。**未注入时不会连接任何服务器**：源码使用占位符 `your-server.example.com` 与 `YOUR_HBBS_PUBLIC_KEY`，必须替换为自建 hbbs/hbbr 的真实地址和 `id_ed25519.pub` 公钥后重新构建。不要把私钥提交进仓库或写入客户端。
 
-```sh
-sudo pacman -Syu --needed unzip git cmake gcc curl wget yasm nasm zip make pkg-config clang gtk3 xdotool libxcb libxfixes alsa-lib pipewire
+## 仪表盘 / 管理端
+
+`app/` 是我们的 Flutter 设备与策略管理端，负责设备列表、接入状态、远程控制策略、隧道模式和 Mesh 策略管理；`rust-core/` 是内核接入骨架。管理端不代替远程桌面客户端，也不提供连接按钮或连接入口。所有连接均由 NEILICO 客户端自己发起，Web 只做管理。
+
+## AGPL-3.0 合规
+
+这是 `rustdesk/rustdesk` 1.5.0 的修改版，上游和本修改版均适用 **GNU Affero General Public License v3.0**：
+
+- 保留 [`LICENCE`](LICENCE) 原文；另提供内容相同的 [`LICENSE`](LICENSE)，便于 GitHub 识别许可。
+- 保留 [`NOTICE`](NOTICE)，记录上游 tag `1.5.0`、上游 commit `fada664df7a294d1d1a9ca3e7cd3637069122f17`、我方改动和 Corresponding Source 地址。
+- 对应源码地址：[github.com/aceneil/neilico-client](https://github.com/aceneil/neilico-client)。
+- 原上游版权、许可文本和署名未删除；修改内容及来源见 `NOTICE`。
+
+---
+
+# English
+
+NEILICO Client is the official multi-platform remote-desktop client for Windows, Linux, macOS, and Android. It is a modified version of `rustdesk/rustdesk` 1.5.0 and is distributed under **AGPL-3.0**. This repository also includes the Flutter device/policy management app migrated from the server repository under `app/`, plus the `rust-core/` integration skeleton.
+
+## Platform status
+
+| Platform | Status | Delivery |
+| :-- | :-- | :-- |
+| Windows x64 | ✅ Released | [Release v1.5.0-neilico.1](https://github.com/aceneil/neilico-client/releases/tag/v1.5.0-neilico.1) |
+| Linux x64 | ⏳ Building | Manual CI in `.github/workflows/neilico-build.yml`, allowed to fail; no release yet |
+| macOS | ⏳ Building | Manual CI in `.github/workflows/neilico-build.yml`, allowed to fail; no release yet |
+| Android | ⏳ Building | Upstream Android toolchain retained; no NEILICO package released yet |
+
+“Building” does not mean released or accepted.
+
+## Download
+
+Windows users can download the current Release asset `neilico-windows-x64.zip`, or use their own control plane at `/downloads/neilico-client-windows-x64.zip`. The release asset and control-plane filename are intentionally different; use the latter filename when placing the package in `NEILICO_DOWNLOADS_DIR`.
+
+## Build
+
+Use **Flutter 3.24.5** and **Rust 1.75**. The Windows workflow is [`.github/workflows/neilico-build.yml`](.github/workflows/neilico-build.yml). The core commands are:
+
+```bash
+cargo build --locked --release --features "flutter,hwcodec,vram"
+cd flutter
+flutter build windows --release
 ```
 
-### Install vcpkg
+The workflow generates the `flutter-rust-bridge` files first and handles Windows-specific engine and dependency setup. Other platforms have different prerequisites and are not release acceptance targets yet.
 
-```sh
-git clone https://github.com/microsoft/vcpkg
-cd vcpkg
-git checkout 2023.04.15
-cd ..
-vcpkg/bootstrap-vcpkg.sh
-export VCPKG_ROOT=$HOME/vcpkg
-vcpkg/vcpkg install libvpx libyuv opus aom
+## Inject the server
+
+Set the build-time environment variables before compiling:
+
+```bash
+NEILICO_ID_SERVER=<HOST> \
+NEILICO_PUB_KEY=<BASE64_PUBLIC_KEY> \
+cargo build --locked --release --features "flutter,hwcodec,vram"
 ```
 
-### Fix libvpx (For Fedora)
+CI injects `vars.NEILICO_ID_SERVER` and `secrets.NEILICO_PUB_KEY`. If they are omitted, the build contains the placeholders `your-server.example.com` and `YOUR_HBBS_PUBLIC_KEY` and **cannot connect to any server**. Replace them with your hbbs/hbbr address and `id_ed25519.pub` public key and rebuild. Never commit or embed the private key.
 
-```sh
-cd vcpkg/buildtrees/libvpx/src
-cd *
-./configure
-sed -i 's/CFLAGS+=-I/CFLAGS+=-fPIC -I/g' Makefile
-sed -i 's/CXXFLAGS+=-I/CXXFLAGS+=-fPIC -I/g' Makefile
-make
-cp libvpx.a $HOME/vcpkg/installed/x64-linux/lib/
-cd
-```
+## Dashboard / management app
 
-### Build
+`app/` is our Flutter device and policy management app. It manages device status, remote-control policy, tunnel mode, and Mesh policy. `rust-core/` is the kernel integration skeleton. The management app is not a remote-desktop client and exposes no connection entry point; every connection is initiated by the NEILICO client itself.
 
-```sh
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-source $HOME/.cargo/env
-git clone --recurse-submodules https://github.com/rustdesk/rustdesk
-cd rustdesk
-mkdir -p target/debug
-wget https://raw.githubusercontent.com/c-smile/sciter-sdk/master/bin.lnx/x64/libsciter-gtk.so
-mv libsciter-gtk.so target/debug
-VCPKG_ROOT=$HOME/vcpkg cargo run
-```
+## AGPL-3.0 compliance
 
-## How to build with Docker
-
-Begin by cloning the repository and building the Docker container:
-
-```sh
-git clone https://github.com/rustdesk/rustdesk
-cd rustdesk
-git submodule update --init --recursive
-docker build -t "rustdesk-builder" .
-```
-
-Then, each time you need to build the application, run the following command:
-
-```sh
-docker run --rm -it -v $PWD:/home/user/rustdesk -v rustdesk-git-cache:/home/user/.cargo/git -v rustdesk-registry-cache:/home/user/.cargo/registry -e PUID="$(id -u)" -e PGID="$(id -g)" rustdesk-builder
-```
-
-Note that the first build may take longer before dependencies are cached, subsequent builds will be faster. Additionally, if you need to specify different arguments to the build command, you may do so at the end of the command in the `<OPTIONAL-ARGS>` position. For instance, if you wanted to build an optimized release version, you would run the command above followed by `--release`. The resulting executable will be available in the target folder on your system, and can be run with:
-
-```sh
-target/debug/rustdesk
-```
-
-Or, if you're running a release executable:
-
-```sh
-target/release/rustdesk
-```
-
-Please ensure that you run these commands from the root of the RustDesk repository, or the application may not find the required resources. Also note that other cargo subcommands such as `install` or `run` are not currently supported via this method as they would install or run the program inside the container instead of the host.
-
-## File Structure
-
-- **[libs/hbb_common](https://github.com/rustdesk/rustdesk/tree/master/libs/hbb_common)**: video codec, config, tcp/udp wrapper, and some other utility functions shared with the server
-- **[libs/base](https://github.com/rustdesk/rustdesk/tree/master/libs/base)**: protobuf, fs functions for file transfer, keyboard and platform code used only by this app
-- **[libs/scrap](https://github.com/rustdesk/rustdesk/tree/master/libs/scrap)**: screen capture
-- **[libs/enigo](https://github.com/rustdesk/rustdesk/tree/master/libs/enigo)**: platform specific keyboard/mouse control
-- **[libs/clipboard](https://github.com/rustdesk/rustdesk/tree/master/libs/clipboard)**: file copy and paste implementation for Windows, Linux, macOS.
-- **[src/ui](https://github.com/rustdesk/rustdesk/tree/master/src/ui)**: obsolete Sciter UI (deprecated)
-- **[src/server](https://github.com/rustdesk/rustdesk/tree/master/src/server)**: audio/clipboard/input/video services, and network connections
-- **[src/client.rs](https://github.com/rustdesk/rustdesk/tree/master/src/client.rs)**: start a peer connection
-- **[src/rendezvous_mediator.rs](https://github.com/rustdesk/rustdesk/tree/master/src/rendezvous_mediator.rs)**: Communicate with [rustdesk-server](https://github.com/rustdesk/rustdesk-server), wait for remote direct (TCP hole punching) or relayed connection
-- **[src/platform](https://github.com/rustdesk/rustdesk/tree/master/src/platform)**: platform specific code
-- **[flutter](https://github.com/rustdesk/rustdesk/tree/master/flutter)**: Flutter code for desktop and mobile
-
-## Screenshots
-
-![Connection Manager](https://github.com/rustdesk/rustdesk/assets/28412477/db82d4e7-c4bc-4823-8e6f-6af7eadf7651)
-
-![Connected to a Windows PC](https://github.com/rustdesk/rustdesk/assets/28412477/9baa91e9-3362-4d06-aa1a-7518edcbd7ea)
-
-![File Transfer](https://github.com/rustdesk/rustdesk/assets/28412477/39511ad3-aa9a-4f8c-8947-1cce286a46ad)
-
-![TCP Tunneling](https://github.com/rustdesk/rustdesk/assets/28412477/78e8708f-e87e-4570-8373-1360033ea6c5)
-
+This is a modified version of `rustdesk/rustdesk` 1.5.0 and is subject to the **GNU Affero General Public License v3.0**. Keep [`LICENCE`](LICENCE) unchanged and use the identical [`LICENSE`](LICENSE) copy for GitHub license detection. [`NOTICE`](NOTICE) records upstream tag `1.5.0`, upstream commit `fada664df7a294d1d1a9ca3e7cd3637069122f17`, our modifications, and the Corresponding Source URL: [github.com/aceneil/neilico-client](https://github.com/aceneil/neilico-client). Upstream copyright, license text, and attribution remain intact.
