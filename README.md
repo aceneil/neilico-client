@@ -51,7 +51,7 @@ CI 从仓库变量 `vars.NEILICO_ID_SERVER` 和密钥 `secrets.NEILICO_PUB_KEY` 
 
 ## 仪表盘 / 管理端
 
-`app/` 是我们的 Flutter 设备与策略管理端，负责设备列表、接入状态、远程控制策略、隧道模式和 Mesh 策略管理；`rust-core/` 是内核接入骨架。管理端不代替远程桌面客户端，也不提供连接按钮或连接入口。所有连接均由 NEILICO 客户端自己发起，Web 只做管理。
+`app/` 是我们的 Flutter 设备与策略管理端，负责设备列表、接入状态、远程控制策略、隧道模式和 Mesh 策略管理；`rust-core/` 是内核接入骨架。迁移来源是主仓库 commit `88e0b974b20c927bc3d98798078217c01c60c692`，使用 `git subtree` 保留来源提交历史。管理端不代替远程桌面客户端，也不提供连接按钮或连接入口。所有连接均由 NEILICO 客户端自己发起，Web 只做管理。
 
 ## AGPL-3.0 合规
 
@@ -109,7 +109,7 @@ CI injects `vars.NEILICO_ID_SERVER` and `secrets.NEILICO_PUB_KEY`. If they are o
 
 ## Dashboard / management app
 
-`app/` is our Flutter device and policy management app. It manages device status, remote-control policy, tunnel mode, and Mesh policy. `rust-core/` is the kernel integration skeleton. The management app is not a remote-desktop client and exposes no connection entry point; every connection is initiated by the NEILICO client itself.
+`app/` is our Flutter device and policy management app. It manages device status, remote-control policy, tunnel mode, and Mesh policy. `rust-core/` is the kernel integration skeleton. The migration source is server-repository commit `88e0b974b20c927bc3d98798078217c01c60c692`; `git subtree` preserves that source history. The management app is not a remote-desktop client and exposes no connection entry point; every connection is initiated by the NEILICO client itself.
 
 ## AGPL-3.0 compliance
 
