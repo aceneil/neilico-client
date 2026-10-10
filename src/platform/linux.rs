@@ -1005,6 +1005,17 @@ fn should_start_server(
     last_restart: &mut Instant,
     server: &mut Option<Child>,
 ) -> bool {
+    #[cfg(feature = "neilico")]
+    if crate::neilico::policy_forbidden(crate::neilico::Feature::RemoteDesktop)
+        || !crate::neilico::enabled(crate::neilico::Feature::RemoteDesktop)
+    {
+        if let Some(ps) = server.as_mut() {
+            allow_err!(ps.kill());
+            *server = None;
+        }
+        return false;
+    }
+
     let cm = get_cm();
     let mut start_new = false;
     let mut should_kill = false;

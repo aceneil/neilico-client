@@ -226,6 +226,11 @@ const String kOptionDisableFloatingWindow = "disable-floating-window";
 const String kOptionKeepScreenOn = "keep-screen-on";
 
 const String kOptionKeepAwakeDuringIncomingSessions = "keep-awake-during-incoming-sessions";
+const String kOptionNeilicoMeshEnabled = "neilico-mesh-enabled";
+const String kOptionNeilicoRemoteDesktopEnabled = "neilico-remote-desktop-enabled";
+const String kOptionNeilicoMeshServer = "neilico-mesh-server";
+const String kOptionNeilicoMeshToken = "neilico-mesh-token";
+const String kOptionNeilicoMeshConnectionString = "neilico-mesh-connection-string";
 const String kOptionKeepAwakeDuringOutgoingSessions = "keep-awake-during-outgoing-sessions";
 
 const String kOptionShowMobileAction = "showMobileActions";

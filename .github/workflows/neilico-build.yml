@@ -120,7 +120,7 @@ jobs:
     timeout-minutes: 240
     env:
       # workflow_dispatch 时可以关掉 hwcodec 走最小构建；push 事件默认完整构建
-      FEATURES: ${{ (github.event_name != 'workflow_dispatch' || inputs.hwcodec) && 'flutter,hwcodec,vram' || 'flutter' }}
+      FEATURES: ${{ (github.event_name != 'workflow_dispatch' || inputs.hwcodec) && 'flutter,hwcodec,vram,neilico' || 'flutter,neilico' }}
     steps:
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@v7
@@ -137,6 +137,26 @@ jobs:
         with:
           name: bridge-artifact
           path: ./
+
+      - name: Checkout NEILICO agent source
+        uses: actions/checkout@v4
+        with:
+          repository: aceneil/neilico
+          ref: c647f8d3f39c6f2c67c4099a9673c9ec6edc28cd
+          path: external/neilico
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: external/neilico/agent/go.mod
+          cache-dependency-path: external/neilico/agent/go.sum
+
+      - name: Build embedded NEILICO Mesh agent
+        shell: bash
+        working-directory: external/neilico/agent
+        run: |
+          CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" \
+            -o "$GITHUB_WORKSPACE/target/release/neilico-agent.exe" ./cmd/agent
 
       - name: Install LLVM and Clang
         uses: KyleMayes/install-llvm-action@v2
@@ -250,6 +270,10 @@ jobs:
           if [ -f target/release/dylib_virtual_display.dll ]; then
             cp target/release/dylib_virtual_display.dll "$SRC/"
           fi
+          if [ ! -f target/release/neilico-agent.exe ]; then
+            echo "!! neilico-agent.exe missing"; exit 1
+          fi
+          cp target/release/neilico-agent.exe "$SRC/"
           rm -rf dist && mkdir -p dist
           cp -r "$SRC"/. dist/
           {

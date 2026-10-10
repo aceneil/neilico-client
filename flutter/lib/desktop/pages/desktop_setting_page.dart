@@ -1735,6 +1735,201 @@ class _SafetyState extends State<_Safety> with AutomaticKeepAliveClientMixin {
   }
 }
 
+class _NeilicoCapabilities extends StatefulWidget {
+  const _NeilicoCapabilities({required this.enabled});
+
+  final bool enabled;
+
+  @override
+  State<_NeilicoCapabilities> createState() => _NeilicoCapabilitiesState();
+}
+
+class _NeilicoCapabilitiesState extends State<_NeilicoCapabilities> {
+  Timer? _statusTimer;
+  final _server = TextEditingController();
+  final _token = TextEditingController();
+  final _connectionString = TextEditingController();
+  Map<String, dynamic> _meshStatus = {};
+  Map<String, dynamic> _remoteDesktopStatus = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _server.text = bind.mainGetOptionSync(key: kOptionNeilicoMeshServer);
+    _token.text = bind.mainGetOptionSync(key: kOptionNeilicoMeshToken);
+    _connectionString.text =
+        bind.mainGetOptionSync(key: kOptionNeilicoMeshConnectionString);
+    _refreshStatus();
+    _statusTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      _refreshStatus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _statusTimer?.cancel();
+    _server.dispose();
+    _token.dispose();
+    _connectionString.dispose();
+    super.dispose();
+  }
+
+  Future<void> _refreshStatus() async {
+    final mesh = bind.mainGetNeilicoFeatureStatus(feature: 'mesh');
+    final remoteDesktop =
+        bind.mainGetNeilicoFeatureStatus(feature: 'remote_desktop');
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _meshStatus = jsonDecode(mesh).cast<String, dynamic>();
+      _remoteDesktopStatus = jsonDecode(remoteDesktop).cast<String, dynamic>();
+    });
+  }
+
+  String _statusText(Map<String, dynamic> status) {
+    if (status['policy_forbidden'] == true) {
+      return '由控制面策略强制禁止';
+    }
+    if (status['running'] == true) {
+      return '运行中';
+    }
+    if (status['enabled'] == true) {
+      return '已停止';
+    }
+    return '已关闭';
+  }
+
+  Future<void> _setFeature(String feature, bool value) async {
+    final error = await bind.mainSetNeilicoFeatureEnabled(
+      feature: feature,
+      enabled: value,
+    );
+    if (error.isNotEmpty && mounted) {
+      showToast(error);
+    }
+    await _refreshStatus();
+  }
+
+  Future<void> _saveMeshConfig() async {
+    final error = bind.mainSetNeilicoMeshConfig(
+      server: _server.text,
+      token: _token.text,
+      connectionString: _connectionString.text,
+    );
+    if (error.isNotEmpty && mounted) {
+      showToast(error);
+    } else if (mounted) {
+      showToast('Mesh 连接配置已保存');
+    }
+  }
+
+  Widget _featureSwitch({
+    required IconData icon,
+    required String title,
+    required Map<String, dynamic> status,
+    required String feature,
+  }) {
+    final forbidden = status['policy_forbidden'] == true;
+    return ListTile(
+      leading: Icon(icon, color: _accentColor),
+      title: Text(
+        title,
+        style: const TextStyle(fontSize: _kContentFontSize),
+      ),
+      subtitle: Text(
+        '${_statusText(status)}${status['error'] == null || (status['error'] as String).isEmpty ? '' : '\n${status['error']}'}',
+        style: TextStyle(
+          fontSize: 12,
+          color: forbidden ? Colors.red : null,
+        ),
+      ),
+      trailing: Switch(
+        value: forbidden ? false : status['enabled'] == true,
+        onChanged: !widget.enabled || forbidden
+            ? null
+            : (value) => _setFeature(feature, value),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_meshStatus.containsKey('enabled') &&
+        !_remoteDesktopStatus.containsKey('enabled')) {
+      return const Offstage();
+    }
+    final meshForbidden = _meshStatus['policy_forbidden'] == true;
+    return _Card(
+      title: 'NEILICO 能力',
+      children: [
+        _featureSwitch(
+          icon: Icons.hub_outlined,
+          title: 'Mesh 网络',
+          status: _meshStatus,
+          feature: 'mesh',
+        ),
+        const Divider(height: 1, indent: 16, endIndent: 16),
+        _featureSwitch(
+          icon: Icons.desktop_windows_outlined,
+          title: '远程桌面',
+          status: _remoteDesktopStatus,
+          feature: 'remote_desktop',
+        ),
+        const Divider(height: 1, indent: 16, endIndent: 16),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: TextField(
+            controller: _server,
+            enabled: widget.enabled && !meshForbidden,
+            decoration: const InputDecoration(
+              labelText: '控制面地址',
+              hintText: 'https://',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          child: TextField(
+            controller: _token,
+            enabled: widget.enabled && !meshForbidden,
+            obscureText: true,
+            decoration: const InputDecoration(
+              labelText: '接入令牌',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          child: TextField(
+            controller: _connectionString,
+            enabled: widget.enabled && !meshForbidden,
+            obscureText: true,
+            decoration: const InputDecoration(
+              labelText: '连接串（可选）',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ),
+        Align(
+          alignment: Alignment.centerRight,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            child: FilledButton.icon(
+              onPressed:
+                  widget.enabled && !meshForbidden ? _saveMeshConfig : null,
+              icon: const Icon(Icons.save_outlined),
+              label: const Text('保存 Mesh 连接配置'),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _Network extends StatefulWidget {
   const _Network({Key? key}) : super(key: key);
 
@@ -1760,6 +1955,7 @@ class _NetworkState extends State<_Network> with AutomaticKeepAliveClientMixin {
       preventMouseKeyBuilder(
         block: locked,
         child: Column(children: [
+          _NeilicoCapabilities(enabled: !locked),
           network(context),
         ]),
       ),

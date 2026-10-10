@@ -202,6 +202,12 @@ pub fn core_main() -> Option<Vec<String>> {
             crate::platform::try_remove_temp_update_files();
             hbb_common::config::PeerConfig::preload_peers();
         }
+        #[cfg(feature = "neilico")]
+        {
+            let _ = no_server;
+            std::thread::spawn(crate::neilico::remote_desktop::start_if_enabled);
+        }
+        #[cfg(not(feature = "neilico"))]
         std::thread::spawn(move || crate::start_server(false, no_server));
     } else {
         #[cfg(any(target_os = "linux", target_os = "macos"))]
@@ -394,6 +400,10 @@ pub fn core_main() -> Option<Vec<String>> {
             log::info!("start --service");
             crate::start_os_service();
             return None;
+        } else if args[0] == "--neilico-remote-desktop" {
+            #[cfg(feature = "neilico")]
+            crate::neilico::remote_desktop::run_managed_server_or_exit();
+            return None;
         } else if args[0] == "--server" {
             log::info!("start --server with user {}", crate::username());
             #[cfg(target_os = "linux")]
@@ -410,6 +420,9 @@ pub fn core_main() -> Option<Vec<String>> {
             crate::privacy_mode::restore_reg_connectivity(true, false);
             #[cfg(any(target_os = "linux", target_os = "windows"))]
             {
+                #[cfg(feature = "neilico")]
+                crate::neilico::remote_desktop::run_server_or_exit();
+                #[cfg(not(feature = "neilico"))]
                 crate::start_server(true, false);
             }
             #[cfg(target_os = "macos")]

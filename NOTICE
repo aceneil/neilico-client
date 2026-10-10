@@ -50,3 +50,21 @@ This program is free software: you can redistribute it and/or modify it
 under the terms of the GNU Affero General Public License as published by
 the Free Software Foundation, either version 3 of the License, or (at
 your option) any later version. See the file LICENCE for the full text.
+
+Bundled NEILICO Mesh agent
+--------------------------
+Windows packages built by `.github/workflows/neilico-build.yml` include
+`neilico-agent.exe`, built from the NEILICO agent source at:
+
+  Source:       https://github.com/aceneil/neilico
+  Path:         agent/
+  Source commit: c647f8d3f39c6f2c67c4099a9673c9ec6edc28cd
+
+The executable is part of the NEILICO combined distribution and its complete
+corresponding source is available from the pinned repository path above. Go
+module dependencies and their upstream licenses are declared in `agent/go.mod`
+and `agent/go.sum`; no dependency license text or attribution is removed.
+
+Release gate: the NEILICO root repository currently labels its root license as
+pending. Before a public binary release, its owner must replace that placeholder
+with an explicit license compatible with this AGPL-3.0 combined distribution.

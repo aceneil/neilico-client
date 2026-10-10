@@ -132,12 +132,27 @@ pub fn peer_get_sessions_count(id: String, conn_type: i32) -> SyncReturn<usize> 
     SyncReturn(sessions::get_session_count(id, conn_type))
 }
 
+#[cfg(feature = "neilico")]
+fn ensure_remote_desktop_enabled() -> Result<(), String> {
+    if crate::neilico::policy_forbidden(crate::neilico::Feature::RemoteDesktop) {
+        return Err("由控制面策略强制禁止".to_owned());
+    }
+    if !crate::neilico::enabled(crate::neilico::Feature::RemoteDesktop) {
+        return Err("远程桌面已关闭".to_owned());
+    }
+    Ok(())
+}
+
 pub fn session_add_existed_sync(
     id: String,
     session_id: SessionID,
     displays: Vec<i32>,
     is_view_camera: bool,
 ) -> SyncReturn<String> {
+    #[cfg(feature = "neilico")]
+    if let Err(e) = ensure_remote_desktop_enabled() {
+        return SyncReturn(e);
+    }
     if let Err(e) = session_add_existed(id.clone(), session_id, displays, is_view_camera) {
         SyncReturn(format!("Failed to add session with id {}, {}", &id, e))
     } else {
@@ -159,6 +174,13 @@ pub fn session_add_sync(
     is_shared_password: bool,
     conn_token: Option<String>,
 ) -> SyncReturn<String> {
+    #[cfg(feature = "neilico")]
+    if let Err(e) = ensure_remote_desktop_enabled() {
+        if is_terminal {
+            std::env::remove_var("IS_TERMINAL_ADMIN");
+        }
+        return SyncReturn(e);
+    }
     let add_res = session_add(
         &session_id,
         &id,
@@ -1002,6 +1024,65 @@ pub fn main_get_option_sync(key: String) -> SyncReturn<String> {
 
 pub fn main_get_error() -> String {
     get_error()
+}
+
+pub fn main_get_neilico_feature_status(feature: String) -> SyncReturn<String> {
+    #[cfg(feature = "neilico")]
+    return SyncReturn(match crate::neilico::status(&feature) {
+        Ok(status) => status.to_string(),
+        Err(err) => serde_json::json!({ "error": err }).to_string(),
+    });
+    #[cfg(not(feature = "neilico"))]
+    SyncReturn(format!("{{\"error\":\"NEILICO feature build is unavailable\",\"feature\":\"{feature}\"}}"))
+}
+
+pub fn main_set_neilico_feature_enabled(feature: String, enabled: bool) -> String {
+    #[cfg(feature = "neilico")]
+    return match crate::neilico::set_enabled(&feature, enabled) {
+        Ok(()) => String::new(),
+        Err(err) => err,
+    };
+    #[cfg(not(feature = "neilico"))]
+    {
+        let _ = (feature, enabled);
+        "NEILICO feature build is unavailable".to_owned()
+    }
+}
+
+pub fn main_set_neilico_mesh_config(
+    server: String,
+    token: String,
+    connection_string: String,
+) -> SyncReturn<String> {
+    config::Config::set_option(
+        keys::OPTION_NEILICO_MESH_SERVER.to_owned(),
+        server.trim().to_owned(),
+    );
+    config::Config::set_option(
+        keys::OPTION_NEILICO_MESH_TOKEN.to_owned(),
+        token.trim().to_owned(),
+    );
+    config::Config::set_option(
+        keys::OPTION_NEILICO_MESH_CONNECTION_STRING.to_owned(),
+        connection_string.trim().to_owned(),
+    );
+    SyncReturn(String::new())
+}
+
+pub fn main_apply_neilico_control_policy(policy_json: String) -> String {
+    #[cfg(feature = "neilico")]
+    return match serde_json::from_str(&policy_json)
+        .map_err(|err| err.to_string())
+        .and_then(crate::neilico::apply_control_policy)
+    {
+        Ok(()) => String::new(),
+        Err(err) => err,
+    };
+    #[cfg(not(feature = "neilico"))]
+    {
+        let _ = policy_json;
+        "NEILICO feature build is unavailable".to_owned()
+    }
 }
 
 pub fn main_set_option(key: String, value: String) {

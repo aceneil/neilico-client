@@ -147,6 +147,13 @@ pub const OPTION_USE_RAW_TCP_FOR_API: &str = "use-raw-tcp-for-api";
 pub const OPTION_HIDE_POWERED_BY_ME: &str = "hide-powered-by-me";
 pub const OPTION_MAIN_WINDOW_ALWAYS_ON_TOP: &str = "main-window-always-on-top";
 
+// NEILICO runtime capabilities. Missing or any value other than "Y" is disabled.
+pub const OPTION_NEILICO_MESH_ENABLED: &str = "neilico-mesh-enabled";
+pub const OPTION_NEILICO_REMOTE_DESKTOP_ENABLED: &str = "neilico-remote-desktop-enabled";
+pub const OPTION_NEILICO_MESH_SERVER: &str = "neilico-mesh-server";
+pub const OPTION_NEILICO_MESH_TOKEN: &str = "neilico-mesh-token";
+pub const OPTION_NEILICO_MESH_CONNECTION_STRING: &str = "neilico-mesh-connection-string";
+
 // flutter local options
 pub const OPTION_FLUTTER_REMOTE_MENUBAR_STATE: &str = "remoteMenubarState";
 pub const OPTION_FLUTTER_PEER_SORTING: &str = "peer-sorting";
@@ -330,6 +337,11 @@ pub const KEYS_SETTINGS: &[&str] = &[
     OPTION_ALLOW_AUTO_UPDATE,
     OPTION_ALLOW_KCP_CC,
     OPTION_ALLOW_WEBRTC_CC,
+    OPTION_NEILICO_MESH_ENABLED,
+    OPTION_NEILICO_REMOTE_DESKTOP_ENABLED,
+    OPTION_NEILICO_MESH_SERVER,
+    OPTION_NEILICO_MESH_TOKEN,
+    OPTION_NEILICO_MESH_CONNECTION_STRING,
 ];
 
 // BUILDIN_SETTINGS
