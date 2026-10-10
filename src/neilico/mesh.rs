@@ -109,10 +109,11 @@ pub fn last_error() -> String {
 
 fn stop() -> Result<(), String> {
     let child = CHILD.lock().unwrap().take();
+    let managed_child = child.is_some();
     if let Some(child) = child {
         super::finish_child(child)?;
     }
-    if interface_exists() {
+    if managed_child && interface_exists() {
         let error = "Mesh 已停止，但 wg0 仍存在".to_owned();
         set_error(&error);
         return Err(error);
