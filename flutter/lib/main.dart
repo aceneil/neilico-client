@@ -34,6 +34,8 @@ import 'models/platform_model.dart';
 int? kWindowId;
 WindowType? kWindowType;
 late List<String> kBootArgs;
+/// --enroll 传入的接入 URI（neilico://enroll?...），待 FFI 就绪后交给 handleUriLink。
+String? kEnrollUri;
 
 Future<void> main(List<String> args) async {
   earlyAssert();
@@ -113,6 +115,10 @@ Future<void> main(List<String> args) async {
     if (isMacOS) {
       disableWindowMovable(kWindowId);
     }
+    final enrollIndex = args.indexOf('--enroll');
+    if (enrollIndex >= 0 && enrollIndex + 1 < args.length) {
+      kEnrollUri = args[enrollIndex + 1];
+    }
     runMainApp(true);
   }
 }
@@ -133,6 +139,11 @@ Future<void> initEnv(String appType) async {
 void runMainApp(bool startService) async {
   // register uni links
   await initEnv(kAppTypeMain);
+  final enrollUri = kEnrollUri;
+  if (enrollUri != null && enrollUri.isNotEmpty) {
+    // FFI 已就绪，接入动作可以写配置了
+    handleUriLink(uriString: enrollUri);
+  }
   checkUpdate();
   // trigger connection status updater
   await bind.mainCheckConnectStatus();

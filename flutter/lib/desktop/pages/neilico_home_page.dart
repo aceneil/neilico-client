@@ -1,8 +1,12 @@
 // NEILICO 客户端主界面（Tailscale 风格布局）
 //
 // 纯布局实现：不依赖 flutter_hbb 的 bind/gFFI，方便单独预览与后续接入。
-// 数据目前是占位（`_sampleDevices`），接入控制面后再替换为真实节点列表。
+// 接入控制面后从 `/api/v1/nodes` 拉真实节点；未接入时保留 `_sampleDevices` 占位。
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 // ── 设计令牌 ────────────────────────────────────────────────────────────────
 class _C {
@@ -69,15 +73,115 @@ class NeilicoHomePage extends StatefulWidget {
 }
 
 class _NeilicoHomePageState extends State<NeilicoHomePage> {
-  bool _connected = true;
+  bool _connected = false;
+  bool _enrolled = false;
   int _railIndex = 0;
   String _query = '';
+  String _serverBase = '';
+  List<_Device> _devices = _sampleDevices;
 
-  List<_Device> get _visible => _sampleDevices
+  List<_Device> get _visible => _devices
       .where((d) => _query.isEmpty ||
           d.name.toLowerCase().contains(_query.toLowerCase()) ||
           d.ip.contains(_query))
       .toList();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDevices();
+  }
+
+  Future<void> _loadDevices() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = (prefs.getString('neilico_api_token') ?? '').trim();
+    final base = (prefs.getString('neilico_server_base') ?? '').trim();
+    if (token.isEmpty || base.isEmpty) {
+      _applyNotEnrolled();
+      return;
+    }
+    try {
+      final response = await http
+          .get(
+            Uri.parse('$base/api/v1/nodes?page_size=50'),
+            headers: {'Authorization': 'Bearer $token'},
+          )
+          .timeout(const Duration(seconds: 10));
+      if (response.statusCode != 200) {
+        _applyNotEnrolled();
+        return;
+      }
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final items = (data['items'] ?? const []) as List<dynamic>;
+      final devices =
+          items.whereType<Map<String, dynamic>>().map(_deviceFromNode).toList();
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _devices = devices;
+        _enrolled = true;
+        _connected = true;
+        _serverBase = base;
+      });
+    } catch (_) {
+      _applyNotEnrolled();
+    }
+  }
+
+  void _applyNotEnrolled() {
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _devices = _sampleDevices;
+      _enrolled = false;
+      _connected = false;
+      _serverBase = '';
+    });
+  }
+
+  _Device _deviceFromNode(Map<String, dynamic> node) {
+    final name = (node['name'] ?? '').toString();
+    final ip = (node['virtual_ip'] ?? '').toString();
+    final online = (node['status'] ?? '').toString() == 'online';
+    final lastSeen = node['last_seen'];
+    var detail = online ? '在线' : '离线';
+    if (!online && lastSeen != null) {
+      final time = DateTime.tryParse(lastSeen.toString());
+      if (time != null) {
+        detail = '最后在线 ${_formatNodeTime(time)}';
+      }
+    }
+    return _Device(
+      name: name.isEmpty ? '未命名设备' : name,
+      os: _osLabel((node['os'] ?? '').toString()),
+      ip: ip,
+      online: online,
+      detail: detail,
+    );
+  }
+
+  String _osLabel(String os) {
+    final lower = os.toLowerCase();
+    if (lower.contains('windows')) {
+      return 'Windows';
+    }
+    if (lower.contains('darwin') || lower.contains('macos')) {
+      return 'macOS';
+    }
+    if (lower.contains('linux')) {
+      return 'Linux';
+    }
+    return os.isEmpty ? '其他' : os;
+  }
+
+  String _formatNodeTime(DateTime time) {
+    final local = time.toLocal();
+    String two(int value) => value.toString().padLeft(2, '0');
+    return '${local.month}-${two(local.day)} '
+        '${two(local.hour)}:${two(local.minute)}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -144,8 +248,10 @@ class _NeilicoHomePageState extends State<NeilicoHomePage> {
           const SizedBox(width: 14),
           Container(width: 1, height: 12, color: _C.border),
           const SizedBox(width: 14),
-          const Text('控制面 192.168.123.90:13000',
-              style: TextStyle(color: _C.muted, fontSize: 11.5)),
+          Text(_enrolled && _serverBase.isNotEmpty
+              ? '控制面 $_serverBase'
+              : '控制面 192.168.123.90:13000',
+              style: const TextStyle(color: _C.muted, fontSize: 11.5)),
           const Spacer(),
           _dot(_connected),
           const SizedBox(width: 6),
@@ -251,7 +357,7 @@ class _NeilicoHomePageState extends State<NeilicoHomePage> {
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              _connected ? '已连接' : '已断开',
+              _enrolled ? (_connected ? '已连接' : '已断开') : '尚未接入',
               style: TextStyle(
                   color: _connected ? _C.online : _C.muted,
                   fontSize: 11.5,
@@ -345,8 +451,8 @@ class _NeilicoHomePageState extends State<NeilicoHomePage> {
                 const SizedBox(width: 8),
                 _pill(self.ip, mono: true),
                 const SizedBox(width: 8),
-                _pill('远程桌面可用',
-                    color: _connected ? _C.online : _C.muted),
+                _pill(_enrolled ? '远程桌面可用' : '尚未接入',
+                    color: _enrolled && _connected ? _C.online : _C.muted),
               ]),
             ],
           ),
@@ -354,9 +460,9 @@ class _NeilicoHomePageState extends State<NeilicoHomePage> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(_connected ? '已连接' : '未连接',
+              Text(_enrolled ? (_connected ? '已连接' : '未连接') : '尚未接入',
                   style: TextStyle(
-                      color: _connected ? _C.online : _C.muted,
+                      color: _enrolled && _connected ? _C.online : _C.muted,
                       fontSize: 13,
                       fontWeight: FontWeight.w600)),
               const SizedBox(height: 2),
@@ -367,7 +473,8 @@ class _NeilicoHomePageState extends State<NeilicoHomePage> {
           const SizedBox(width: 14),
           Switch(
             value: _connected,
-            onChanged: (v) => setState(() => _connected = v),
+            onChanged:
+                _enrolled ? (v) => setState(() => _connected = v) : null,
             activeColor: Colors.white,
             activeTrackColor: _C.online,
             inactiveThumbColor: Colors.white,
@@ -536,7 +643,7 @@ class _NeilicoHomePageState extends State<NeilicoHomePage> {
             ),
             const Spacer(),
             TextButton.icon(
-              onPressed: () {},
+              onPressed: () => _loadDevices(),
               icon: const Icon(Icons.refresh, size: 15, color: _C.muted),
               label: const Text('刷新',
                   style: TextStyle(color: _C.muted, fontSize: 12.5)),

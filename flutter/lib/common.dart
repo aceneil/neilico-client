@@ -20,7 +20,9 @@ import 'package:flutter_hbb/utils/platform_channel.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:get/get_rx/src/rx_workers/utils/debouncer.dart';
+import 'package:http/http.dart' as http_client;
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uni_links/uni_links.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
@@ -2254,6 +2256,12 @@ setEnvTerminalAdmin() {
 
 // uri link handler
 bool handleUriLink({List<String>? cmdArgs, Uri? uri, String? uriString}) {
+  final enrollUri =
+      _enrollUriOf(cmdArgs: cmdArgs, uri: uri, uriString: uriString);
+  if (enrollUri != null) {
+    handleEnrollUri(enrollUri);
+    return true;
+  }
   List<String>? args;
   if (cmdArgs != null && cmdArgs.isNotEmpty) {
     args = cmdArgs;
@@ -2386,6 +2394,90 @@ bool handleUriLink({List<String>? cmdArgs, Uri? uri, String? uriString}) {
   }
 
   return false;
+}
+
+// neilico://enroll?server=<控制面地址>&token=<一次性令牌>
+Uri? _enrollUriOf({List<String>? cmdArgs, Uri? uri, String? uriString}) {
+  final candidates = <Uri?>[
+    uri,
+    uriString != null ? Uri.tryParse(uriString) : null,
+  ];
+  if (cmdArgs != null && cmdArgs.isNotEmpty) {
+    candidates.add(Uri.tryParse(cmdArgs.first));
+  }
+  for (final candidate in candidates) {
+    if (candidate != null && candidate.host == 'enroll') {
+      return candidate;
+    }
+  }
+  return null;
+}
+
+Future<void> handleEnrollUri(Uri uri) async {
+  final server = (uri.queryParameters['server'] ?? '').trim();
+  final token = (uri.queryParameters['token'] ?? '').trim();
+  if (server.isEmpty || token.isEmpty) {
+    _enrollToast('接入链接无效：缺少 server 或 token');
+    return;
+  }
+  final base =
+      server.endsWith('/') ? server.substring(0, server.length - 1) : server;
+  try {
+    final response = await http_client
+        .post(
+          Uri.parse('$base/api/v1/client/enroll'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'token': token}),
+        )
+        .timeout(const Duration(seconds: 10));
+    if (response.statusCode != 200) {
+      _enrollToast('接入失败（HTTP ${response.statusCode}）：'
+          '${_enrollErrorText(response.body)}');
+      return;
+    }
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final serverInfo =
+        (data['server'] ?? <String, dynamic>{}) as Map<String, dynamic>;
+    await _setEnrollOption('custom-rendezvous-server', serverInfo['id_server']);
+    await _setEnrollOption('relay-server', serverInfo['relay_server']);
+    await _setEnrollOption('api-server', serverInfo['api_server']);
+    await _setEnrollOption('key', serverInfo['key']);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('neilico_api_token', (data['api_token'] ?? '').toString());
+    await prefs.setString('neilico_server_base', base);
+    _enrollToast('已接入控制面');
+  } catch (e) {
+    _enrollToast('接入失败：$e');
+  }
+}
+
+Future<void> _setEnrollOption(String key, Object? value) async {
+  final text = (value ?? '').toString().trim();
+  if (text.isEmpty) {
+    return;
+  }
+  await bind.mainSetOption(key: key, value: text);
+}
+
+String _enrollErrorText(String body) {
+  try {
+    final data = jsonDecode(body) as Map<String, dynamic>;
+    final error = data['error'];
+    if (error is Map<String, dynamic>) {
+      final message = (error['message'] ?? '').toString();
+      if (message.isNotEmpty) {
+        return message;
+      }
+    }
+  } catch (_) {
+    // 响应不是 JSON：回落到原始文本
+  }
+  final text = body.trim();
+  return text.isEmpty ? '未知错误' : text;
+}
+
+void _enrollToast(String message) {
+  Timer(Duration(seconds: 1), () => showToast(message));
 }
 
 List<String>? urlLinkToCmdArgs(Uri uri) {
