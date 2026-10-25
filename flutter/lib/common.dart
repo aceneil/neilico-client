@@ -16,13 +16,13 @@ import 'package:flutter_hbb/models/peer_model.dart';
 import 'package:flutter_hbb/models/peer_tab_model.dart';
 import 'package:flutter_hbb/models/state_model.dart';
 import 'package:flutter_hbb/utils/multi_window_manager.dart';
+import 'package:flutter_hbb/utils/enroll_store.dart';
 import 'package:flutter_hbb/utils/platform_channel.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:get/get_rx/src/rx_workers/utils/debouncer.dart';
 import 'package:http/http.dart' as http_client;
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uni_links/uni_links.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
@@ -2442,9 +2442,10 @@ Future<void> handleEnrollUri(Uri uri) async {
     await _setEnrollOption('relay-server', serverInfo['relay_server']);
     await _setEnrollOption('api-server', serverInfo['api_server']);
     await _setEnrollOption('key', serverInfo['key']);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('neilico_api_token', (data['api_token'] ?? '').toString());
-    await prefs.setString('neilico_server_base', base);
+    await EnrollStore.save(
+      serverBase: base,
+      apiToken: (data['api_token'] ?? '').toString(),
+    );
     _enrollToast('已接入控制面');
   } catch (e) {
     _enrollToast('接入失败：$e');

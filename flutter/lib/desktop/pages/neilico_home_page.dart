@@ -5,8 +5,9 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+
+import '../../../utils/enroll_store.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 
 // ── 设计令牌 ────────────────────────────────────────────────────────────────
 class _C {
@@ -93,13 +94,13 @@ class _NeilicoHomePageState extends State<NeilicoHomePage> {
   }
 
   Future<void> _loadDevices() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = (prefs.getString('neilico_api_token') ?? '').trim();
-    final base = (prefs.getString('neilico_server_base') ?? '').trim();
-    if (token.isEmpty || base.isEmpty) {
+    final saved = await EnrollStore.load();
+    if (saved == null) {
       _applyNotEnrolled();
       return;
     }
+    final token = saved.apiToken;
+    final base = saved.serverBase;
     try {
       final response = await http
           .get(
